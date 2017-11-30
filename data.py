@@ -45,9 +45,9 @@ def load_train_data(data_path="", validation_size=200):
    
 
     x_train = x_values[:1500] #336 values
-    x_val = x_values[1500:]
+    x_val = x_values[1500:1800]
     y_train = y_values[:1500]
-    y_val = y_values[1500:]
+    y_val = y_values[1500:1800]
 
     # reshaping data in a not flat format
     x_train = x_train.reshape(len(x_train), IMAGE_SIZE, IMAGE_SIZE, 3)
@@ -70,14 +70,6 @@ def load_from_csv(path):
 
 
 def load_test_data():
-    # test_data = pd.read_csv(data_path, header=None)
-    # x_test = test_data.drop(0, axis=1)
-    # x_test = np.array(x_test).astype(np.float32)
-
-    # y_test = np.array(test_data[0])
-    # y_test = (np.arange(10) == y_test[:, None]).astype(np.float32)
-
-    # x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 1)
     original_img = load_from_csv('./original_train/data.csv')
     irr_img = load_from_csv('./irr_train/data.csv')
 
@@ -85,7 +77,7 @@ def load_test_data():
     # converting the data in a numpy array
     for img_name in original_img:
         image_path = os.path.join('./original_train/' + img_name)
-        img =  imread(image_path, flatten = True) # flattern is to a gray-scale layers
+        img =  imread(image_path, flatten = False) # flattern is to a gray-scale layers
         img = img.astype('float32')
         temp.append(img)
 
@@ -105,10 +97,10 @@ def load_test_data():
     y_values = np.stack(temp)  # (1836, 64, 64)
    
 
-    x_test = x_values[100:200] #336 values
-    y_test = y_values[100:200]
+    x_test = x_values[1800:1836] #336 values
+    y_test = y_values[1800:1836]
 
-    x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 1)
+    x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 3)
     y_test = y_test.reshape(len(y_test), IMAGE_SIZE, IMAGE_SIZE, 1)
     
     

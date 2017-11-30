@@ -26,9 +26,9 @@ def evaluate():
             total_accuracy = sess.run([accuracy])
             print('Test accuracy: {}'.format(total_accuracy))
             im =sess.run(img_tf)
-            tiff.imshow(images[6])
-            tiff.imshow(labels[6],cmap='gray')
-            tiff.imshow(im[6], cmap='gray')
+            tiff.imshow(images[15])
+            tiff.imshow(labels[15],cmap='gray')
+            tiff.imshow(im[15], cmap='gray')
             io.show()
     
 

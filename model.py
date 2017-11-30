@@ -38,7 +38,7 @@ class Model(object):
             W_fc1 = self._create_weights([16 * 16 * 32, 512])
             b_fc1 = self._create_bias([512])
             local1 = tf.nn.relu(tf.matmul(reshape, W_fc1) + b_fc1, name=scope.name) # (?, 1024)
-            
+            some = tf.reshape(local1,[-1, 16,16,1])
             resize = tf.image.resize_bicubic(some[:20], [64,64]) # upscaling part TODO: select 20 latersu
         
 
