@@ -3,3 +3,4 @@ original_train/
 graphs/
 checkpoints/
 __pycache__/
+*.h5

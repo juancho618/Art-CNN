@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 import data as data
-from model import Model
+from model2 import Model
 from skimage import io
 import skimage.external.tifffile as tiff
 
