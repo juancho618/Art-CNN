@@ -21,12 +21,11 @@ class Model(object):
         'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
         'relu5_3', 'conv5_4', 'relu5_4'
         )
-        self.weights = [16, 32, 64, 128]
+        self.weights = [64,0, 64, 0,0,128, 0, 128,0, 0,512, 0,512 ,0, 512,0,512, 0, 0, 512,0,512,0,512,0,512,0]
 
-    
-    def inference(self, images, keep_prob):
+    def vgg_net(self, images):
         net = {}
-        for i, name in enumerate(layers):
+        for i, name in enumerate(self.layers):
             kind = name[:4]
             if kind == 'conv':
                 kernel = self._create_weights([2, 2, 3, self.weights[i]])
@@ -41,7 +40,47 @@ class Model(object):
             net[name] = current
         return net
 
-    
+
+    def inference(self, images, keep_prob):
+      image_net = self.vgg_net(images)
+      conv_final_layer = image_net["conv5_3"]
+      pool5 = self._create_max_pool_2x2(conv_final_layer)
+
+      w6 = self._create_weights([2,2,512,4096])
+      b6 = self._create_bias(4096)
+      conv6 = self._create_conv2d(pool5,w6)
+      result = tf.add.bias(conv6, b6)
+      relu6 = tf.nn.relu(result, name="relu6")
+      relu_dropout6 = tf.nn.dropout(relu6, keep_prob=keep_prob)
+
+
+      w7 = self._create_weights([1,1,4096,4096])
+      b = self._create_bias(4096)
+      conv7 = self._create_conv2d(relu_dropout6,w7)
+      result = tf.add.bias(conv7, b7)
+      relu7 = tf.nn.relu(result, name="relu7")
+      relu_dropout7 = tf.nn.dropout(relu7, keep_prob=keep_prob)
+
+      # Now it comes the deconvolution to the original size
+      deconv_shape1 = image_net["pool4"].get_shape()
+      w_t1 = self._create_weights([4,4, deconv_shape1[3].value, 1])
+      b_t1 = self._create_bias([deconv_shape1[3].value])
+      conv_t1 = tf.nn.conv2d_transpose(relu_dropout7,w_t1,b_t1, outpu_shape=tf.shape(image_net["pool4"]))
+      fuse_1 = tf.add(conv_t1, image_net["pool4"], name = "fuse_1")
+
+      deconv_shape2 = image_net["pool3"].get_shape()
+      w_t2 = self._create_weights([4,4, deconv_shape2[3].value, 1])
+      b_t2 = self._create_bias([deconv_shape2[3].value])
+      conv_t2 = tf.nn.conv2d_transpose(fuse_1,w_t2,b_t2, outpu_shape=tf.shape(image_net["pool3"]))
+      fuse_2 = tf.add(conv_t2, image_net["pool3"], name = "fuse_2") 
+
+      shape = [64, 64, 1]
+      deconv_shape3 = tf.stack(shape[0], shape[1], shape[2])
+      w_t3 = self._create_weights([64,64, deconv_shape2[3].value])
+      b_t2 = self._create_bias([1])
+      conv_t3 = tf.nn.conv2d_transpose(fuse_2,w_t3,b_t3, outpu_shape=tf.shape(deconv_shape3, stride=8))
+      
+      return conv_t3
 
     def _create_conv2d(self, x, W):
         return tf.nn.conv2d(input=x,
@@ -49,7 +88,7 @@ class Model(object):
                             strides = [1, 1, 1, 1],
                             padding = 'SAME')
     
-    def _create_max_pool_2x2(self, input):
+    def _create_max_pool_2x2(self, input, name):
         return tf.nn.max_pool(value = input,
                               ksize = [1, 2, 2, 1],
                               strides = [1, 2, 2, 1],

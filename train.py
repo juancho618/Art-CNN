@@ -1,7 +1,7 @@
 import tensorflow as tf
 import data as data
 import time
-from model2 import Model
+from fcnVGG import Model
 
 
 FLAGS = tf.app.flags.FLAGS

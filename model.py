@@ -17,7 +17,7 @@ class Model(object):
             bias = self._create_bias([16])
             preactivation = tf.nn.bias_add(conv, bias)
             conv1 = tf.nn.relu(preactivation, name = scope.name)
-            self._activation_summary(conv1)   
+            self._activation_summary(conv1)     
 
         # First pool
         h_pool1 = self._create_max_pool_2x2(conv)
@@ -90,9 +90,9 @@ class Model(object):
     
     def _create_max_pool_2x2(self, input):
         return tf.nn.max_pool(value = input,
-                              ksize = [1, 2, 2, 1],
-                              strides = [1, 2, 2, 1],
-                              padding = 'SAME')
+                            ksize = [1, 2, 2, 1],
+                            strides = [1, 2, 2, 1],
+                            padding = 'SAME')
         
     def _create_weights(self, shape):
         return tf.Variable(tf.truncated_normal(shape = shape, stddev = 0.1, dtype = tf.float32))
