@@ -3,12 +3,15 @@ import numpy as np
 from skimage import io
 import skimage.external.tifffile as tiff
 
+#link about deconvolution terms: https://www.quora.com/What-is-the-difference-between-Deconvolution-Upsampling-Unpooling-and-Convolutional-Sparse-Coding
+#deconvolution video: https://www.youtube.com/watch?v=8DiqJj5tPlA
+#good guide for transpose deconvolution: http://cv-tricks.com/image-segmentation/transpose-convolution-in-tensorflow/
 class Model(object):
     def __init__(self, batch_size=20, learning_rate=1e-4):
         self._batch_size = batch_size
         self._learning_rate = learning_rate
        
-
+  
 
     def inference(self, images, keep_prob):
         with tf.variable_scope('conv1_1') as scope:
@@ -21,7 +24,7 @@ class Model(object):
         
         with tf.variable_scope('conv1_2') as scope:
             kernel = self._create_weights([2, 2, 64, 64])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv1_1, kernel) 
             bias = self._create_bias([64])
             preactivation = tf.nn.bias_add(conv, bias)
             conv1_2= tf.nn.relu(preactivation, name = scope.name)
@@ -31,7 +34,7 @@ class Model(object):
 
         with tf.variable_scope('conv2_1') as scope:
             kernel = self._create_weights([2, 2, 64, 128])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(h_pool1, kernel) 
             bias = self._create_bias([128])
             preactivation = tf.nn.bias_add(conv, bias)
             conv2_1 = tf.nn.relu(preactivation, name = scope.name)
@@ -39,7 +42,7 @@ class Model(object):
             
         with tf.variable_scope('conv2_2') as scope:
             kernel = self._create_weights([2, 2, 128, 128])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv2_1, kernel) 
             bias = self._create_bias([128])
             preactivation = tf.nn.bias_add(conv, bias)
             conv2_2 = tf.nn.relu(preactivation, name = scope.name)
@@ -49,7 +52,7 @@ class Model(object):
         
         with tf.variable_scope('conv3_1') as scope:
             kernel = self._create_weights([2, 2, 128, 256])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(h_pool2, kernel) 
             bias = self._create_bias([256])
             preactivation = tf.nn.bias_add(conv, bias)
             conv3_1 = tf.nn.relu(preactivation, name = scope.name)
@@ -57,7 +60,7 @@ class Model(object):
         
         with tf.variable_scope('conv3_2') as scope:
             kernel = self._create_weights([2, 2, 256, 256])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv3_1, kernel) 
             bias = self._create_bias([256])
             preactivation = tf.nn.bias_add(conv, bias)
             conv3_2 = tf.nn.relu(preactivation, name = scope.name)
@@ -65,7 +68,7 @@ class Model(object):
 
         with tf.variable_scope('conv3_3') as scope:
             kernel = self._create_weights([2, 2, 256, 256])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv3_2, kernel) 
             bias = self._create_bias([256])
             preactivation = tf.nn.bias_add(conv, bias)
             conv3_3 = tf.nn.relu(preactivation, name = scope.name)
@@ -73,7 +76,7 @@ class Model(object):
 
         with tf.variable_scope('conv3_4') as scope:
             kernel = self._create_weights([2, 2, 256, 256])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv3_3, kernel) 
             bias = self._create_bias([256])
             preactivation = tf.nn.bias_add(conv, bias)
             conv3_4 = tf.nn.relu(preactivation, name = scope.name)
@@ -83,7 +86,7 @@ class Model(object):
 
         with tf.variable_scope('conv4_1') as scope:
             kernel = self._create_weights([2, 2, 256, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(h_pool3, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv3_1 = tf.nn.relu(preactivation, name = scope.name)
@@ -91,7 +94,7 @@ class Model(object):
         
         with tf.variable_scope('conv4_2') as scope:
             kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv3_1, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv4_2 = tf.nn.relu(preactivation, name = scope.name)
@@ -99,7 +102,7 @@ class Model(object):
 
         with tf.variable_scope('conv4_3') as scope:
             kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv4_2, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv4_3 = tf.nn.relu(preactivation, name = scope.name)
@@ -107,41 +110,7 @@ class Model(object):
 
         with tf.variable_scope('conv4_4') as scope:
             kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
-            bias = self._create_bias([512])
-            preactivation = tf.nn.bias_add(conv, bias)
-            conv4_4 = tf.nn.relu(preactivation, name = scope.name)
-            self._activation_summary(conv4_4)   
-        
-        h_pool4 = self._create_max_pool_2x2(conv4_4) 
-
-        with tf.variable_scope('conv4_1') as scope:
-            kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
-            bias = self._create_bias([512])
-            preactivation = tf.nn.bias_add(conv, bias)
-            conv4_1 = tf.nn.relu(preactivation, name = scope.name)
-            self._activation_summary(conv3_1)  
-        
-        with tf.variable_scope('conv4_2') as scope:
-            kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
-            bias = self._create_bias([512])
-            preactivation = tf.nn.bias_add(conv, bias)
-            conv4_2 = tf.nn.relu(preactivation, name = scope.name)
-            self._activation_summary(conv4_2)  
-
-        with tf.variable_scope('conv4_3') as scope:
-            kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
-            bias = self._create_bias([512])
-            preactivation = tf.nn.bias_add(conv, bias)
-            conv4_3 = tf.nn.relu(preactivation, name = scope.name)
-            self._activation_summary(conv4_3)
-
-        with tf.variable_scope('conv4_4') as scope:
-            kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv4_3, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv4_4 = tf.nn.relu(preactivation, name = scope.name)
@@ -151,7 +120,7 @@ class Model(object):
 
         with tf.variable_scope('conv5_1') as scope:
             kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(h_pool4, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv5_1 = tf.nn.relu(preactivation, name = scope.name)
@@ -159,7 +128,7 @@ class Model(object):
         
         with tf.variable_scope('conv5_2') as scope:
             kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv5_1, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv5_2 = tf.nn.relu(preactivation, name = scope.name)
@@ -167,7 +136,7 @@ class Model(object):
 
         with tf.variable_scope('conv5_3') as scope:
             kernel = self._create_weights([2, 2, 512, 512])
-            conv = self._create_conv2d(images, kernel) 
+            conv = self._create_conv2d(conv5_2, kernel) 
             bias = self._create_bias([512])
             preactivation = tf.nn.bias_add(conv, bias)
             conv5_3 = tf.nn.relu(preactivation, name = scope.name)
@@ -178,43 +147,158 @@ class Model(object):
 
         with tf.variable_scope('local1') as scope:
             w6 = self._create_weights([2,2,512,4096])
-            b6 = self._create_bias(4096)
+            b6 = self._create_bias([4096])
             conv6 = self._create_conv2d(h_pool5,w6)
-            result = tf.add.bias(conv6, b6)
+            result = tf.nn.bias_add(conv6, b6)
             relu6 = tf.nn.relu(result, name="relu6")
             relu_dropout6 = tf.nn.dropout(relu6, keep_prob=keep_prob)
+            print('first drop', relu_dropout6.get_shape())
+
+            print('conv 6', conv6.get_shape())
 
         with tf.variable_scope('local2') as scope:
             w7 = self._create_weights([1,1,4096,4096])
-            b7 = self._create_bias(4096)
+            b7 = self._create_bias([4096])
             conv7 = self._create_conv2d(relu_dropout6,w7)
-            result = tf.add.bias(conv7, b7)
+            result = tf.nn.bias_add(conv7, b7)
             relu7 = tf.nn.relu(result, name="relu7")
             relu_dropout7 = tf.nn.dropout(relu7, keep_prob=keep_prob)
+            print('second drop', relu_dropout7.get_shape())
+
+            print('conv 7', conv7.get_shape())
       
         with tf.variable_scope('deconv_1') as scope:
             # Now it comes the deconvolution to the original size
-            deconv_shape1 = h_pool4.get_shape()
-            w_t1 = self._create_weights([4,4, deconv_shape1[3].value, 1])
-            b_t1 = self._create_bias([deconv_shape1[3].value])
-            conv_t1 = tf.nn.conv2d_transpose(relu_dropout7,w_t1,b_t1, outpu_shape=tf.shape(h_pool4))
-            fuse_1 = tf.add(conv_t1, image_net["pool4"], name = "fuse_1")
+            
+            #Different approach
+            n_channels = 4096
+            upscale_factor = 6
+            kernel_size = 2*upscale_factor - upscale_factor%2
+            stride =  upscale_factor
+            strides = [1, stride, stride, 1]
+            in_shape = tf.shape(relu_dropout7)
+            
+            h = ((in_shape[1] - 1) * stride) + 1
+            w = ((in_shape[2] - 1) * stride) + 1
+            new_shape = [in_shape[0], h, w, n_channels]
+            output_shape = tf.stack(new_shape)
 
-        with tf.variable_scope('deconv_2') as scope:
-            deconv_shape2 = h_pool3.get_shape()
-            w_t2 = self._create_weights([4,4, deconv_shape2[3].value, 1])
-            b_t2 = self._create_bias([deconv_shape2[3].value])
-            conv_t2 = tf.nn.conv2d_transpose(fuse_1,w_t2,b_t2, outpu_shape=tf.shape(h_pool3))
-            fuse_2 = tf.add(conv_t2, image_net["pool3"], name = "fuse_2") 
+            filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
+            weights = self.get_bilinear_filter(filter_shape,upscale_factor)
+            deconv = tf.nn.conv2d_transpose(relu_dropout7, weights, output_shape,
+                                            strides=strides, padding='SAME')
+            print('deconvolution shape', tf.shape(output_shape))
 
-        with tf.variable_scope('deconv_3') as scope:
-            shape = [64, 64, 1]
-            deconv_shape3 = tf.stack(shape[0], shape[1], shape[2])
-            w_t3 = self._create_weights([64,64, deconv_shape2[3].value])
-            b_t2 = self._create_bias([1])
-            conv_t3 = tf.nn.conv2d_transpose(fuse_2, w_t3, b_t3, outpu_shape=tf.shape(deconv_shape3, stride=8))
+
+
+        # #other deconv layers
+        # with tf.variable_scope('deconv_2') as scope:
+
+        #     n_channels = 512
+        #     upscale_factor = 2
+        #     kernel_size = 2*upscale_factor - upscale_factor%2
+        #     stride =  upscale_factor
+        #     strides = [1, stride, stride, 1]
+        #     in_shape = tf.shape(relu_dropout7)
+            
+        #     h = ((in_shape[1] - 1) * stride) + 1
+        #     w = ((in_shape[2] - 1) * stride) + 1
+        #     new_shape = [in_shape[0], h, w, n_channels]
+        #     output_shape = tf.stack(new_shape)
+
+        #     filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
+        #     weights = self.get_bilinear_filter(filter_shape,upscale_factor)
+        #     deconv2 = tf.nn.conv2d_transpose(deconv, weights, output_shape,
+        #                                     strides=strides, padding='SAME')
+        #     print('deconvolution shape', tf.shape(deconv2))
+            
+        # with tf.variable_scope('deconv_3') as scope:
+
+        #     n_channels = 256
+        #     upscale_factor = 2
+        #     kernel_size = 2*upscale_factor - upscale_factor%2
+        #     stride =  upscale_factor
+        #     strides = [1, stride, stride, 1]
+        #     in_shape = tf.shape(relu_dropout7)
+            
+        #     h = ((in_shape[1] - 1) * stride) + 1
+        #     w = ((in_shape[2] - 1) * stride) + 1
+        #     new_shape = [in_shape[0], h, w, n_channels]
+        #     output_shape = tf.stack(new_shape)
+
+        #     filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
+        #     weights = self.get_bilinear_filter(filter_shape,upscale_factor)
+        #     deconv3 = tf.nn.conv2d_transpose(deconv2, weights, output_shape,
+        #                                     strides=strides, padding='SAME')
+        #     print('deconvolution shape', tf.shape(deconv3))
+
+        #     with tf.variable_scope('deconv_4') as scope:
+
+        #         n_channels = 128
+        #         upscale_factor = 2
+        #         kernel_size = 2*upscale_factor - upscale_factor%2
+        #         stride =  upscale_factor
+        #         strides = [1, stride, stride, 1]
+        #         in_shape = tf.shape(relu_dropout7)
+                
+        #         h = ((in_shape[1] - 1) * stride) + 1
+        #         w = ((in_shape[2] - 1) * stride) + 1
+        #         new_shape = [in_shape[0], h, w, n_channels]
+        #         output_shape = tf.stack(new_shape)
+
+        #         filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
+        #         weights = self.get_bilinear_filter(filter_shape,upscale_factor)
+        #         deconv4 = tf.nn.conv2d_transpose(deconv3, weights, output_shape,
+        #                                         strides=strides, padding='SAME')
+        #         print('deconvolution shape', tf.shape(deconv4))
+
+        #     with tf.variable_scope('deconv_5') as scope:
+
+        #         n_channels = 64
+        #         upscale_factor = 2
+        #         kernel_size = 2*upscale_factor - upscale_factor%2
+        #         stride =  upscale_factor
+        #         strides = [1, stride, stride, 1]
+        #         in_shape = tf.shape(relu_dropout7)
+                
+        #         h = ((in_shape[1] - 1) * stride) + 1
+        #         w = ((in_shape[2] - 1) * stride) + 1
+        #         new_shape = [in_shape[0], h, w, n_channels]
+        #         output_shape = tf.stack(new_shape)
+
+        #         filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
+        #         weights = self.get_bilinear_filter(filter_shape,upscale_factor)
+        #         deconv5 = tf.nn.conv2d_transpose(deconv4, weights, output_shape,
+        #                                         strides=strides, padding='SAME')
+        #         print('deconvolution shape', tf.shape(deconv5))
+        
       
-        return conv_t3
+        return ''
+
+    def get_bilinear_filter(self, filter_shape, upscale_factor):
+            ##filter_shape is [width, height, num_in_channels, num_out_channels]
+        kernel_size = filter_shape[1]
+        ### Centre location of the filter for which value is calculated
+        if kernel_size % 2 == 1:
+            centre_location = upscale_factor - 1
+        else:
+            centre_location = upscale_factor - 0.5
+ 
+        bilinear = np.zeros([filter_shape[0], filter_shape[1]])
+        for x in range(filter_shape[0]):
+            for y in range(filter_shape[1]):
+                ##Interpolation Calculation
+                value = (1 - abs((x - centre_location)/ upscale_factor)) * (1 - abs((y - centre_location)/ upscale_factor))
+                bilinear[x, y] = value
+        weights = np.zeros(filter_shape)
+        for i in range(filter_shape[2]):
+            weights[:, :, i, i] = bilinear
+        init = tf.constant_initializer(value=weights,
+                                       dtype=tf.float32)
+ 
+        bilinear_weights = tf.get_variable(name="decon_bilinear_filter", initializer=init,
+                               shape=weights.shape)
+        return bilinear_weights
 
     def train(self, loss, global_step):
         tf.summary.scalar('learning_rate', self._learning_rate)

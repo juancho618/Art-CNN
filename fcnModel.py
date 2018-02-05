@@ -55,7 +55,7 @@ class Model(object):
 
 
       w7 = self._create_weights([1,1,4096,4096])
-      b = self._create_bias(4096)
+      b7 = self._create_bias(4096)
       conv7 = self._create_conv2d(relu_dropout6,w7)
       result = tf.add.bias(conv7, b7)
       relu7 = tf.nn.relu(result, name="relu7")
@@ -65,20 +65,20 @@ class Model(object):
       deconv_shape1 = image_net["pool4"].get_shape()
       w_t1 = self._create_weights([4,4, deconv_shape1[3].value, 1])
       b_t1 = self._create_bias([deconv_shape1[3].value])
-      conv_t1 = tf.nn.conv2d_transpose(relu_dropout7,w_t1,b_t1, outpu_shape=tf.shape(image_net["pool4"]))
+      conv_t1 = tf.nn.conv2d_transpose(relu_dropout7,w_t1,b_t1, output_shape=tf.shape(image_net["pool4"]))
       fuse_1 = tf.add(conv_t1, image_net["pool4"], name = "fuse_1")
 
       deconv_shape2 = image_net["pool3"].get_shape()
       w_t2 = self._create_weights([4,4, deconv_shape2[3].value, 1])
       b_t2 = self._create_bias([deconv_shape2[3].value])
-      conv_t2 = tf.nn.conv2d_transpose(fuse_1,w_t2,b_t2, outpu_shape=tf.shape(image_net["pool3"]))
+      conv_t2 = tf.nn.conv2d_transpose(fuse_1,w_t2,b_t2, output_shape=tf.shape(image_net["pool3"]))
       fuse_2 = tf.add(conv_t2, image_net["pool3"], name = "fuse_2") 
 
       shape = [64, 64, 1]
       deconv_shape3 = tf.stack(shape[0], shape[1], shape[2])
       w_t3 = self._create_weights([64,64, deconv_shape2[3].value])
-      b_t2 = self._create_bias([1])
-      conv_t3 = tf.nn.conv2d_transpose(fuse_2,w_t3,b_t3, outpu_shape=tf.shape(deconv_shape3, stride=8))
+      b_t3 = self._create_bias([1])
+      conv_t3 = tf.nn.conv2d_transpose(fuse_2,w_t3,b_t3, output_shape=tf.shape(deconv_shape3, stride=8))
       
       return conv_t3
 
