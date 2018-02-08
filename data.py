@@ -97,7 +97,7 @@ def load_test_data():
     y_values = np.stack(temp)  # (1836, 64, 64)
    
 
-    x_test = x_values[1800:1836] #336 values
+    x_test = x_values[1800:1836] #36 values
     y_test = y_values[1800:1836]
 
     x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 3)

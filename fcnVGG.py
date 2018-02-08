@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from skimage import io
+import logging
+from math import ceil
 import skimage.external.tifffile as tiff
 
 #link about deconvolution terms: https://www.quora.com/What-is-the-difference-between-Deconvolution-Upsampling-Unpooling-and-Convolutional-Sparse-Coding
@@ -14,6 +16,10 @@ class Model(object):
   
 
     def inference(self, images, keep_prob):
+        random_init_fc8= False
+        train = True
+        num_classes = 1
+        debug = False
         with tf.variable_scope('conv1_1') as scope:
             kernel = self._create_weights([2, 2, 3, 64])
             conv = self._create_conv2d(images, kernel) 
@@ -157,7 +163,7 @@ class Model(object):
             print('conv 6', conv6.get_shape())
 
         with tf.variable_scope('local2') as scope:
-            w7 = self._create_weights([1,1,4096,4096])
+            w7 = self._create_weights([2,2,4096,4096])
             b7 = self._create_bias([4096])
             conv7 = self._create_conv2d(relu_dropout6,w7)
             result = tf.nn.bias_add(conv7, b7)
@@ -166,28 +172,43 @@ class Model(object):
             print('second drop', relu_dropout7.get_shape())
 
             print('conv 7', conv7.get_shape())
-      
-        with tf.variable_scope('deconv_1') as scope:
-            # Now it comes the deconvolution to the original size
-            
-            #Different approach
-            n_channels = 4096
-            upscale_factor = 6
-            kernel_size = 2*upscale_factor - upscale_factor%2
-            stride =  upscale_factor
-            strides = [1, stride, stride, 1]
-            in_shape = tf.shape(relu_dropout7)
-            
-            h = ((in_shape[1] - 1) * stride) + 1
-            w = ((in_shape[2] - 1) * stride) + 1
-            new_shape = [in_shape[0], h, w, n_channels]
-            output_shape = tf.stack(new_shape)
 
-            filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
-            weights = self.get_bilinear_filter(filter_shape,upscale_factor)
-            deconv = tf.nn.conv2d_transpose(relu_dropout7, weights, output_shape,
-                                            strides=strides, padding='SAME')
-            print('deconvolution shape', tf.shape(output_shape))
+        # if random_init_fc8:
+        #     self.score_fr = self._score_layer(relu_dropout7, "score_fr",
+        #                                       num_classes)
+        # else:
+        #     self.score_fr = self._fc_layer(relu_dropout7, "score_fr",
+        #                                    num_classes=num_classes,
+        #                                    relu=False)
+        
+        self.upscore = self._upscore_layer(relu_dropout7, shape=None,
+                                           num_classes=num_classes,
+                                           debug=debug,
+                                           name='up', ksize=64, stride=32)
+     
+
+
+        # with tf.variable_scope('deconv_1') as scope:
+        #     # Now it comes the deconvolution to the original size
+            
+        #     #Different approach
+        #     n_channels = 4096
+        #     upscale_factor = 6
+        #     kernel_size = 2*upscale_factor - upscale_factor%2
+        #     stride =  upscale_factor
+        #     strides = [1, stride, stride, 1]
+        #     in_shape = tf.shape(relu_dropout7)
+            
+        #     h = ((in_shape[1] - 1) * stride) + 1
+        #     w = ((in_shape[2] - 1) * stride) + 1
+        #     new_shape = [in_shape[0], h, w, 1]
+        #     output_shape = tf.stack(new_shape)
+
+        #     filter_shape = [kernel_size, kernel_size, n_channels, n_channels]
+        #     weights = self.get_bilinear_filter(filter_shape,upscale_factor)
+        #     deconv = tf.nn.conv2d_transpose(relu_dropout7, weights, output_shape,
+        #                                     strides=strides, padding='SAME')
+        #     print('deconvolution shape', tf.shape(output_shape))
 
 
 
@@ -273,7 +294,101 @@ class Model(object):
         #         print('deconvolution shape', tf.shape(deconv5))
         
       
-        return ''
+        return self.upscore
+
+    def _fc_layer(self, bottom, name, num_classes=None,
+                  relu=True, debug=False):
+        with tf.variable_scope(name) as scope:
+            shape = bottom.get_shape().as_list()
+
+            if name == 'fc6':
+                filt = self.get_fc_weight_reshape(name, [4, 4, 512, 4096])
+            elif name == 'score_fr':
+                name = 'fc8'  # Name of score_fr layer in VGG Model
+                filt = self.get_fc_weight_reshape(bottom, [1, 1, 4096, 1000],
+                                                  num_classes=num_classes)
+            else:
+                filt = self.get_fc_weight_reshape(name, [1, 1, 4096, 4096])
+            conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
+            conv_biases = self.get_bias(name, num_classes=num_classes)
+            bias = tf.nn.bias_add(conv, conv_biases)
+
+            if relu:
+                bias = tf.nn.relu(bias)
+            _activation_summary(bias)
+
+            if debug:
+                bias = tf.Print(bias, [tf.shape(bias)],
+                                message='Shape of %s' % name,
+                                summarize=4, first_n=1)
+            return bias
+
+    def get_fc_weight_reshape(self, name, shape, num_classes=None):
+        print('Layer name: %s' % name)
+        print('Layer shape: %s' % shape)
+        
+        weights = name
+        if num_classes is not None:
+            weights = self._summary_reshape(weights, shape,
+                                            num_new=num_classes)
+        init = tf.constant_initializer(value=weights,
+                                       dtype=tf.float32)
+        return tf.get_variable(name="weights", initializer=init, shape=shape)
+
+    def _upscore_layer(self, bottom, shape,
+                       num_classes, name, debug,
+                       ksize=4, stride=2):
+        strides = [1, stride, stride, 1]
+        with tf.variable_scope(name):
+            in_features = bottom.get_shape()[3].value
+
+            if shape is None:
+                # Compute shape out of Bottom
+                in_shape = tf.shape(bottom)
+
+                h = ((in_shape[1] - 1) * stride) + 1
+                w = ((in_shape[2] - 1) * stride) + 1
+                new_shape = [in_shape[0], h, w, num_classes]
+            else:
+                new_shape = [shape[0], shape[1], shape[2], num_classes]
+            output_shape = tf.stack(new_shape)
+
+            logging.debug("Layer: %s, Fan-in: %d" % (name, in_features))
+            f_shape = [ksize, ksize, num_classes, in_features]
+
+            # create
+            num_input = ksize * ksize * in_features / stride
+            stddev = (2 / num_input)**0.5
+
+            weights = self.get_deconv_filter(f_shape)
+            deconv = tf.nn.conv2d_transpose(bottom, weights, output_shape,
+                                            strides=strides, padding='SAME')
+
+            if debug:
+                deconv = tf.Print(deconv, [tf.shape(deconv)],
+                                  message='Shape of %s' % name,
+                                  summarize=4, first_n=1)
+
+        _activation_summary(deconv)
+        return deconv
+    def get_deconv_filter(self, f_shape):
+        width = f_shape[0]
+        height = f_shape[1]
+        f = ceil(width/2.0)
+        c = (2 * f - 1 - f % 2) / (2.0 * f)
+        bilinear = np.zeros([f_shape[0], f_shape[1]])
+        for x in range(width):
+            for y in range(height):
+                value = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
+                bilinear[x, y] = value
+        weights = np.zeros(f_shape)
+        for i in range(f_shape[2]):
+            weights[:, :, i, i] = bilinear
+
+        init = tf.constant_initializer(value=weights,
+                                       dtype=tf.float32)
+        return tf.get_variable(name="up_filter", initializer=init,
+                               shape=weights.shape)
 
     def get_bilinear_filter(self, filter_shape, upscale_factor):
             ##filter_shape is [width, height, num_in_channels, num_out_channels]
@@ -348,3 +463,21 @@ class Model(object):
 
     def save_infered(self):
         print('infered data', len(self._infered[0]))
+
+def _activation_summary(x):
+    """Helper to create summaries for activations.
+
+    Creates a summary that provides a histogram of activations.
+    Creates a summary that measure the sparsity of activations.
+
+    Args:
+    x: Tensor
+    Returns:
+    nothing
+    """
+    # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
+    # session. This helps the clarity of presentation on tensorboard.
+    tensor_name = x.op.name
+    # tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
+    tf.summary.histogram(tensor_name + '/activations', x)
+    tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))

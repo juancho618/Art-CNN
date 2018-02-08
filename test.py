@@ -1,7 +1,8 @@
 import tensorflow as tf
-
+import matplotlib.pyplot as plt
 import data as data
-from model2 import Model
+#from model2 import Model
+from fcnVGGrefactor import Model
 from skimage import io
 import skimage.external.tifffile as tiff
 

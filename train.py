@@ -1,11 +1,12 @@
 import tensorflow as tf
 import data as data
 import time
-from fcnVGG import Model
+#from fcnVGG import Model
+from fcnVGGrefactor import Model
 
 
 FLAGS = tf.app.flags.FLAGS
-NUM_LABELS = 256
+
 #https://pythonprogramming.net/rnn-tensorflow-python-machine-learning-tutorial/
 #https://github.com/MarvinTeichmann/tensorflow-fcn   #example from git
 
