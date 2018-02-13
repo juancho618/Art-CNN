@@ -1,31 +1,3 @@
-
-Skip to content
-This repository
-
-    Pull requests
-    Issues
-    Marketplace
-    Explore
-
-    @juancho618
-
-1
-0
-
-    0
-
-juancho618/Art-CNN
-Code
-Issues 0
-Pull requests 0
-Projects 0
-Wiki
-Insights
-Settings
-Art-CNN/fcnVGGrefactor.py
-bee3377 5 days ago
-root refactor with fuse and deconvolutions
-421 lines (342 sloc) 17.3 KB
 import tensorflow as tf
 import numpy as np
 from skimage import io
@@ -43,12 +15,11 @@ class Model(object):
         self._learning_rate = learning_rate
         # preloaded file 
         self.data_dict = np.load('vgg16.npy', encoding='latin1').item()
-       
   
 
     def inference(self, images, keep_prob):
         random_init_fc8= False
-        train = False
+        train = True
         num_classes = 1
         debug = False
 
@@ -97,43 +68,32 @@ class Model(object):
         
         #Deconvolution Phase
         self.upscore = self._upscore_layer( self.fc7,
-                                            shape=tf.shape(self.pool4), #original tf.shape(self.pool4)
-                                            num_classes=512,
+                                            shape=tf.shape(self.pool3), #original tf.shape(self.pool4)
+                                            num_classes=256,#512
                                             debug=debug, name='upscore',
-                                            ksize=4, stride=2) # original: ksize=4, stride=2
+                                            ksize=8, stride=4) # original: ksize=4, stride=2
         
-        self.score_pool4 = self._score_layer(self.pool4, "score_pool4",
-                                             num_classes=512)
+        # self.score_pool4 = self._score_layer(self.pool4, "score_pool4",
+        #                                      num_classes=512)
         
       
-        self.fuse_pool4 = tf.add(self.upscore, self.score_pool4)
+        # self.fuse_pool4 = tf.add(self.upscore, self.score_pool4)
 
         
-        self.upscore2 = self._upscore_layer(self.fuse_pool4,
-                                            shape=tf.shape(self.pool3),
-                                            num_classes=256,
+        self.upscore2 = self._upscore_layer(self.upscore,
+                                            shape=tf.shape(self.pool1),
+                                            num_classes=64,
                                             debug=debug, name='upscore2',
-                                            ksize=4, stride=2)  
+                                            ksize=8, stride=4)  
 
         self.upscore3 = self._upscore_layer(self.upscore2,
-                                            shape=tf.shape(self.pool2), 
-                                            num_classes=128,
+                                            shape=tf.shape(images), 
+                                            num_classes=1,
                                             debug=debug, name='upscore3',
                                             ksize=4, stride=2)  
 
-        self.upscore4 = self._upscore_layer(self.upscore3,
-                                            shape=tf.shape(self.pool1),
-                                            num_classes=64,
-                                            debug=debug, name='upscore4',
-                                            ksize=4, stride=2)  
-
-        self.upscore5 = self._upscore_layer(self.upscore4,
-                                            shape=tf.shape(images),
-                                            num_classes=1,
-                                            debug=debug, name='upscore5',
-                                            ksize=4, stride=2)  
       
-        return self.upscore5
+        return self.upscore3
 
     def _fc_layer(self, bottom, name, num_classes=None,
                   relu=True, debug=False):
@@ -176,17 +136,22 @@ class Model(object):
 
     def _summary_reshape(self, fweight, shape, num_new):
         """ Produce weights for a reduced fully-connected layer.
+
         FC8 of VGG produces 1000 classes. Most semantic segmentation
         task require much less classes. This reshapes the original weights
         to be used in a fully-convolutional layer which produces num_new
         classes. To archive this the average (mean) of n adjanced classes is
         taken.
+
         Consider reordering fweight, to perserve semantic meaning of the
         weights.
+
         Args:
           fweight: original weights
           shape: shape of the desired fully-convolutional layer
           num_new: number of new classes
+
+
         Returns:
           Filter weights for `num_new` classes.
         """
@@ -261,8 +226,8 @@ class Model(object):
         return cost
 
     def accuracy(self, logits, labels):
-            with tf.variable_scope('accuracy') as scope:
-                accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits), tf.argmax(labels)), dtype=tf.float32),
+            with tf.variable_scope('accuracy') as scope: #tf.cast(tf.equal(tf.argmax(logits), tf.argmax(labels)
+                accuracy = tf.reduce_mean(tf.squared_difference(logits, labels),
                                         name=scope.name)
                 tf.summary.scalar('accuracy', accuracy)
             return accuracy
@@ -298,6 +263,7 @@ class Model(object):
     
     def _bias_reshape(self, bweight, num_orig, num_new):
         """ Build bias weights for filter produces with `_summary_reshape`
+
         """
         n_averaged_elements = num_orig//num_new
         avg_bweight = np.zeros(num_new)
@@ -377,15 +343,18 @@ class Model(object):
 
     def _variable_with_weight_decay(self, shape, stddev, wd):
         """Helper to create an initialized Variable with weight decay.
+
         Note that the Variable is initialized with a truncated normal
         distribution.
         A weight decay is added only if one is specified.
+
         Args:
           name: name of the variable
           shape: list of ints
           stddev: standard deviation of a truncated Gaussian
           wd: add L2Loss weight decay multiplied by this float. If None, weight
               decay is not added for this Variable.
+
         Returns:
           Variable Tensor
         """
@@ -423,8 +392,10 @@ class Model(object):
 
 def _activation_summary(x):
     """Helper to create summaries for activations.
+
     Creates a summary that provides a histogram of activations.
     Creates a summary that measure the sparsity of activations.
+
     Args:
     x: Tensor
     Returns:
@@ -436,18 +407,3 @@ def _activation_summary(x):
     # tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
-
-    © 2018 GitHub, Inc.
-    Terms
-    Privacy
-    Security
-    Status
-    Help
-
-    Contact GitHub
-    API
-    Training
-    Shop
-    Blog
-    About
-

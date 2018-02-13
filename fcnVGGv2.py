@@ -1,31 +1,3 @@
-
-Skip to content
-This repository
-
-    Pull requests
-    Issues
-    Marketplace
-    Explore
-
-    @juancho618
-
-1
-0
-
-    0
-
-juancho618/Art-CNN
-Code
-Issues 0
-Pull requests 0
-Projects 0
-Wiki
-Insights
-Settings
-Art-CNN/fcnVGGrefactor.py
-bee3377 5 days ago
-root refactor with fuse and deconvolutions
-421 lines (342 sloc) 17.3 KB
 import tensorflow as tf
 import numpy as np
 from skimage import io
@@ -43,6 +15,22 @@ class Model(object):
         self._learning_rate = learning_rate
         # preloaded file 
         self.data_dict = np.load('vgg16.npy', encoding='latin1').item()
+        self.shapes = {
+            'conv1_1': [3, 3, 3, 64],
+            'conv1_2': [3, 3, 64, 64],
+            'conv2_1': [3, 3, 64, 128],
+            'conv2_2': [3, 3, 128, 128],
+            'conv3_1': [3, 3, 128, 256],
+            'conv3_2': [3, 3, 256, 256],
+            'conv3_3': [3, 3, 256, 256],
+            'conv4_1': [3, 3, 256, 512],
+            'conv4_2': [3, 3, 512, 512],
+            'conv4_3': [3, 3, 512, 512],
+            'conv5_1':[3, 3, 512, 512],
+            'conv5_2':[3, 3, 512, 512],
+            'conv5_3':[3, 3, 512, 512]
+
+        }
        
   
 
@@ -176,17 +164,22 @@ class Model(object):
 
     def _summary_reshape(self, fweight, shape, num_new):
         """ Produce weights for a reduced fully-connected layer.
+
         FC8 of VGG produces 1000 classes. Most semantic segmentation
         task require much less classes. This reshapes the original weights
         to be used in a fully-convolutional layer which produces num_new
         classes. To archive this the average (mean) of n adjanced classes is
         taken.
+
         Consider reordering fweight, to perserve semantic meaning of the
         weights.
+
         Args:
           fweight: original weights
           shape: shape of the desired fully-convolutional layer
           num_new: number of new classes
+
+
         Returns:
           Filter weights for `num_new` classes.
         """
@@ -261,8 +254,8 @@ class Model(object):
         return cost
 
     def accuracy(self, logits, labels):
-            with tf.variable_scope('accuracy') as scope:
-                accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(logits), tf.argmax(labels)), dtype=tf.float32),
+            with tf.variable_scope('accuracy') as scope: #tf.cast(tf.equal(tf.argmax(logits), tf.argmax(labels)
+                accuracy = tf.reduce_mean(tf.squared_difference(logits, labels),
                                         name=scope.name)
                 tf.summary.scalar('accuracy', accuracy)
             return accuracy
@@ -283,9 +276,10 @@ class Model(object):
 
     # Calculate the filter size!
     def get_conv_filter(self, name):
-        init = tf.constant_initializer(value=self.data_dict[name][0],
+        init = tf.constant_initializer(value=self.shapes[name],
                                        dtype=tf.float32)
-        shape = self.data_dict[name][0].shape
+        #shape = self.data_dict[name][0].shape
+        shape = self.shapes[name]
         print('Layer name: %s' % name)
         print('Layer shape: %s' % str(shape))
         var = tf.get_variable(name="filter", initializer=init, shape=shape)
@@ -298,6 +292,7 @@ class Model(object):
     
     def _bias_reshape(self, bweight, num_orig, num_new):
         """ Build bias weights for filter produces with `_summary_reshape`
+
         """
         n_averaged_elements = num_orig//num_new
         avg_bweight = np.zeros(num_new)
@@ -377,15 +372,18 @@ class Model(object):
 
     def _variable_with_weight_decay(self, shape, stddev, wd):
         """Helper to create an initialized Variable with weight decay.
+
         Note that the Variable is initialized with a truncated normal
         distribution.
         A weight decay is added only if one is specified.
+
         Args:
           name: name of the variable
           shape: list of ints
           stddev: standard deviation of a truncated Gaussian
           wd: add L2Loss weight decay multiplied by this float. If None, weight
               decay is not added for this Variable.
+
         Returns:
           Variable Tensor
         """
@@ -423,8 +421,10 @@ class Model(object):
 
 def _activation_summary(x):
     """Helper to create summaries for activations.
+
     Creates a summary that provides a histogram of activations.
     Creates a summary that measure the sparsity of activations.
+
     Args:
     x: Tensor
     Returns:
@@ -436,18 +436,3 @@ def _activation_summary(x):
     # tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
-
-    © 2018 GitHub, Inc.
-    Terms
-    Privacy
-    Security
-    Status
-    Help
-
-    Contact GitHub
-    API
-    Training
-    Shop
-    Blog
-    About
-

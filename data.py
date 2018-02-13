@@ -100,6 +100,9 @@ def load_test_data():
     x_test = x_values[1800:1836] #36 values
     y_test = y_values[1800:1836]
 
+    # x_test = x_values[0:36] #36 values
+    # y_test = y_values[0:36]
+
     x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 3)
     y_test = y_test.reshape(len(y_test), IMAGE_SIZE, IMAGE_SIZE, 1)
     

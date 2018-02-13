@@ -2,9 +2,11 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import data as data
 #from model2 import Model
-from fcnVGGrefactor import Model
+from fcnVGGhourglass import Model
 from skimage import io
 import skimage.external.tifffile as tiff
+import scipy.misc
+from PIL import Image
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -19,18 +21,25 @@ def evaluate():
         accuracy = model.accuracy(logits, labels)
         img_tf = logits
         saver = tf.train.Saver()
-
         with tf.Session() as sess:
             tf.global_variables_initializer().run()
             saver.restore(sess, FLAGS.checkpoint_file_path)
 
             total_accuracy = sess.run([accuracy])
-            print('Test accuracy: {}'.format(total_accuracy))
+            print('Test Error: {}'.format(total_accuracy))
             im =sess.run(img_tf)
-            tiff.imshow(images[15])
-            tiff.imshow(labels[15],cmap='gray')
-            tiff.imshow(im[15], cmap='gray')
-            io.show()
+            for i in range(len(images)):
+                
+                
+                tiff.imshow(images[i])
+                tiff.imshow(labels[i],cmap='gray')
+                # tiff.imshow(im[33], cmap='gray')
+                #tiff.imsave('./hourglass/results/temp'+str(i)+'.tiff', im[i])
+                # imag = Image.fromarray(im[i])
+                # imag.save("your_file"+i+".tiff")
+                tiff.imshow(im[i], cmap='gray')
+                #scipy.misc.imsave('./hourglass/results/temp'+str(i)+'.jpg', im[i])
+                io.show()
     
 
 
@@ -39,7 +48,7 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    tf.app.flags.DEFINE_string('checkpoint_file_path', 'checkpoints/model.ckpt-75-75', 'path to checkpoint file')
+    tf.app.flags.DEFINE_string('checkpoint_file_path', 'hourglass/checkpoints/model.ckpt-75-75', 'path to checkpoint file')
     tf.app.flags.DEFINE_string('test_data', 'original_train/', 'path to test data')
 
     tf.app.run()
