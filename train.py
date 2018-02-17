@@ -2,7 +2,7 @@ import tensorflow as tf
 import data as data
 import time
 #from fcnVGG import Model
-from fcnVGGhourglass import Model
+from VGG11up import Model
 
 
 FLAGS = tf.app.flags.FLAGS
@@ -60,8 +60,8 @@ def main(argv=None):
 if __name__ == '__main__':
     tf.app.flags.DEFINE_integer('batch_size', 20, 'size of training batches')
     tf.app.flags.DEFINE_integer('num_iter', 75, 'number of training iterations')
-    tf.app.flags.DEFINE_string('checkpoint_file_path', '3up/checkpoints/model.ckpt-75', 'path to checkpoint file')
+    tf.app.flags.DEFINE_string('checkpoint_file_path', '11up/checkpoints/model.ckpt-75', 'path to checkpoint file')
     tf.app.flags.DEFINE_string('train_data', 'original_train/', 'path to train and test data')
-    tf.app.flags.DEFINE_string('summary_dir', '3up/graphs', 'path to directory for storing summaries')
+    tf.app.flags.DEFINE_string('summary_dir', '11up/graphs', 'path to directory for storing summaries')
 
     tf.app.run()

@@ -19,7 +19,7 @@ class Model(object):
 
     def inference(self, images, keep_prob):
         random_init_fc8= False
-        train = True
+        train = False
         num_classes = 1
         debug = False
 

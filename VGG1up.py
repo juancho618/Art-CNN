@@ -68,43 +68,32 @@ class Model(object):
         
         #Deconvolution Phase
         self.upscore = self._upscore_layer( self.fc7,
-                                            shape=tf.shape(self.pool4), #original tf.shape(self.pool4)
-                                            num_classes=1,#512
+                                            shape=tf.shape(self.pool1), #original tf.shape(self.pool4)
+                                            num_classes=64,#512
                                             debug=debug, name='upscore',
-                                            ksize=4, stride=2) 
+                                            ksize=32, stride=16) # original: ksize=4, stride=2
         
-        self.score_pool4 = self._score_layer(self.pool4, "score_pool4",
-                                             num_classes=512)
+        # self.score_pool4 = self._score_layer(self.pool4, "score_pool4",
+        #                                      num_classes=512)
         
       
-        self.fuse_pool4 = tf.add(self.upscore, self.score_pool4)
+        # self.fuse_pool4 = tf.add(self.upscore, self.score_pool4)
 
         
-        self.upscore2 = self._upscore_layer(self.fuse_pool4,
-                                            shape=tf.shape(self.pool3),
-                                            num_classes=256,
+        # self.upscore2 = self._upscore_layer(self.upscore,
+        #                                     shape=tf.shape(self.pool1),
+        #                                     num_classes=64,
+        #                                     debug=debug, name='upscore2',
+        #                                     ksize=8, stride=4)  
+
+        self.upscore2 = self._upscore_layer(self.upscore,
+                                            shape=tf.shape(images), 
+                                            num_classes=1,
                                             debug=debug, name='upscore2',
                                             ksize=4, stride=2)  
 
-        self.upscore3 = self._upscore_layer(self.upscore2,
-                                            shape=tf.shape(self.pool2), 
-                                            num_classes=128,
-                                            debug=debug, name='upscore3',
-                                            ksize=4, stride=2)  
-
-        self.upscore4 = self._upscore_layer(self.upscore3,
-                                            shape=tf.shape(self.pool1),
-                                            num_classes=64,
-                                            debug=debug, name='upscore4',
-                                            ksize=4, stride=2)  
-
-        self.upscore5 = self._upscore_layer(self.upscore4,
-                                            shape=tf.shape(images),
-                                            num_classes=1,
-                                            debug=debug, name='upscore5',
-                                            ksize=4, stride=2)  
       
-        return self.upscore5
+        return self.upscore2
 
     def _fc_layer(self, bottom, name, num_classes=None,
                   relu=True, debug=False):
@@ -231,15 +220,15 @@ class Model(object):
             print('labels', labels.shape)
             #cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
             #cost = tf.reduce_mean(cross_entropy, name=scope.name)
-            #cost = tf.reduce_mean(tf.squared_difference(logits, labels))
-            cost =  tf.losses.mean_squared_error(labels,logits)
+            cost = tf.reduce_mean(tf.squared_difference(logits, labels))
             tf.summary.scalar('cost', cost)
 
         return cost
 
     def accuracy(self, logits, labels):
             with tf.variable_scope('accuracy') as scope: #tf.cast(tf.equal(tf.argmax(logits), tf.argmax(labels)
-                accuracy = tf.losses.mean_squared_error(labels,logits,scope=scope.name)
+                accuracy = tf.reduce_mean(tf.squared_difference(logits, labels),
+                                        name=scope.name)
                 tf.summary.scalar('accuracy', accuracy)
             return accuracy
     
