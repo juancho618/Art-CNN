@@ -19,7 +19,7 @@ class Model(object):
 
     def inference(self, images, keep_prob):
         random_init_fc8= False
-        train = True
+        train = False
         num_classes = 1
         debug = False
 
@@ -68,8 +68,8 @@ class Model(object):
         
         #Deconvolution Phase
         self.upscore = self._upscore_layer( self.fc7,
-                                            shape=tf.shape(self.images), #original tf.shape(self.pool4)
-                                            num_classes=32,#512
+                                            shape=tf.shape(images), #original tf.shape(self.pool4)
+                                            num_classes=1,#512
                                             debug=debug, name='upscore',
                                             ksize=64, stride=32) # original: ksize=4, stride=2
         
