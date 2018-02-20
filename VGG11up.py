@@ -6,6 +6,9 @@ from math import ceil, floor
 import skimage.external.tifffile as tiff
 import numpy as np
 
+VGG_MEAN = [103.939, 116.779, 123.68]
+
+
 #link about deconvolution terms: https://www.quora.com/What-is-the-difference-between-Deconvolution-Upsampling-Unpooling-and-Convolutional-Sparse-Coding
 #deconvolution video: https://www.youtube.com/watch?v=8DiqJj5tPlA
 #good guide for transpose deconvolution: http://cv-tricks.com/image-segmentation/transpose-convolution-in-tensorflow/
@@ -22,6 +25,12 @@ class Model(object):
         train = False
         num_classes = 1
         debug = False
+
+        red, green, blue = tf.split(images, 3, 3)
+        images = tf.concat([
+            blue - VGG_MEAN[0],
+            green - VGG_MEAN[1],
+            red - VGG_MEAN[2]], axis=3)
 
         self.conv1_1 = self._conv_layer(images, "conv1_1")
         self.conv1_2 = self._conv_layer(self.conv1_1, "conv1_2")
