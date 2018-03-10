@@ -1,27 +1,46 @@
 import tensorflow as tf
 import numpy as np
-from skimage import io
 import logging
 from math import ceil, floor
-import skimage.external.tifffile as tiff
 import numpy as np
 
+VGG_MEAN = [103.939, 116.779, 123.68]
 #link about deconvolution terms: https://www.quora.com/What-is-the-difference-between-Deconvolution-Upsampling-Unpooling-and-Convolutional-Sparse-Coding
 #deconvolution video: https://www.youtube.com/watch?v=8DiqJj5tPlA
 #good guide for transpose deconvolution: http://cv-tricks.com/image-segmentation/transpose-convolution-in-tensorflow/
 class Model(object):
-    def __init__(self, batch_size=20, learning_rate=5e-4):
+    def __init__(self, batch_size=18, learning_rate=5e-4):
         self._batch_size = batch_size
         self._learning_rate = learning_rate
         # preloaded file 
         self.data_dict = np.load('vgg16.npy', encoding='latin1').item()
-  
+    
+    #to be deleted
+    #  def _create_weights(self, shape):
+    #     return tf.Variable(tf.truncated_normal(shape = shape, stddev = 0.1, dtype = tf.float32))
 
-    def inference(self, images, keep_prob):
+    # def _create_bias(self, shape):
+    #     return tf.Variable(tf.constant(1., shape = shape, dtype = tf.float32))
+    
+    # def _create_conv2d(self, x, W):
+    #     return tf.nn.conv2d(input=x,
+    #                         filter=W,
+    #                         strides = [1, 1, 1, 1],
+    #                         padding = 'SAME')
+    
+
+    #----
+
+    def inference(self, images, keep_prob, train):
         random_init_fc8= False
-        train = True
         num_classes = 1
         debug = False
+
+        red, green, blue = tf.split(images, 3, 3)
+        images = tf.concat([
+            blue - VGG_MEAN[0],
+            green - VGG_MEAN[1],
+            red - VGG_MEAN[2]], axis=3)
 
         self.conv1_1 = self._conv_layer(images, "conv1_1")
         self.conv1_2 = self._conv_layer(self.conv1_1, "conv1_2")
@@ -49,13 +68,14 @@ class Model(object):
        
 
         self.fc6 = self._fc_layer(self.pool5, "fc6")
+        print('fully conv layer 6 shape', self.fc6.shape)
 
-        if train:
-            self.fc6 = tf.nn.dropout(self.fc6, 0.5)
+        # if train:
+        #     self.fc6 = tf.nn.dropout(self.fc6, 0.5)
 
-        self.fc7 = self._fc_layer(self.fc6, "fc7")
-        if train:
-            self.fc7 = tf.nn.dropout(self.fc7, 0.5)
+        # self.fc7 = self._fc_layer(self.fc6, "fc7")
+        # if train:
+        #     self.fc7 = tf.nn.dropout(self.fc7, 0.5)
 
         #TODO: Is it really important????
         # if random_init_fc8:
@@ -67,44 +87,54 @@ class Model(object):
         #                                    relu=False)
         
         #Deconvolution Phase
-        self.upscore = self._upscore_layer( self.fc7,
+        self.upscore = self._upscore_layer( self.fc6,
                                             shape=tf.shape(self.pool4), #original tf.shape(self.pool4)
-                                            num_classes=1,#512
-                                            debug=debug, name='upscore',
+                                            num_classes = tf.shape(self.pool4)[3],#512
+                                            debug=debug, name='upscore_1',
                                             ksize=4, stride=2) 
         
-        self.score_pool4 = self._score_layer(self.pool4, "score_pool4",
-                                             num_classes=512)
+        # self.score_pool4 = self._score_layer(self.pool4, "score_pool4",
+        #                                      num_classes=512)
         
       
-        self.fuse_pool4 = tf.add(self.upscore, self.score_pool4)
+        self.fuse_pool4 = tf.add(self.upscore, self.pool4, name='fuse_1')
 
         
         self.upscore2 = self._upscore_layer(self.fuse_pool4,
                                             shape=tf.shape(self.pool3),
-                                            num_classes=256,
-                                            debug=debug, name='upscore2',
+                                            num_classes=tf.shape(self.pool3)[3],
+                                            debug=debug, name='upscore_2',
                                             ksize=4, stride=2)  
 
-        self.upscore3 = self._upscore_layer(self.upscore2,
+        self.fuse_pool3 = tf.add(self.upscore2, self.pool3, name='fuse_2')
+
+        self.upscore3 = self._upscore_layer(self.fuse_pool3,
                                             shape=tf.shape(self.pool2), 
-                                            num_classes=128,
-                                            debug=debug, name='upscore3',
+                                            num_classes=tf.shape(self.pool2)[3],
+                                            debug=debug, name='upscore_3',
                                             ksize=4, stride=2)  
 
-        self.upscore4 = self._upscore_layer(self.upscore3,
+        self.fuse_pool2 = tf.add(self.upscore3, self.pool2, name='fuse_3')
+
+        self.upscore4 = self._upscore_layer(self.fuse_pool2,
                                             shape=tf.shape(self.pool1),
-                                            num_classes=64,
-                                            debug=debug, name='upscore4',
+                                            num_classes=tf.shape(self.pool1)[3],
+                                            debug=debug, name='upscore_4',
                                             ksize=4, stride=2)  
 
-        self.upscore5 = self._upscore_layer(self.upscore4,
+        self.fuse_pool1 = tf.add(self.upscore4, self.pool1, name='fuse_4')
+
+        self.upscore5 = self._upscore_layer(self.fuse_pool1,
                                             shape=tf.shape(images),
                                             num_classes=1,
-                                            debug=debug, name='upscore5',
+                                            debug=debug, name='upscore_5',
                                             ksize=4, stride=2)  
-      
-        return self.upscore5
+        
+        print('final shape', self.upscore5.shape)
+
+        reshape = tf.reshape(self.upscore5, [-1,64,64]) 
+
+        return reshape
 
     def _fc_layer(self, bottom, name, num_classes=None,
                   relu=True, debug=False):

@@ -5,3 +5,4 @@ checkpoints/
 __pycache__/
 *.h5
 vgg16.npy
+*.npy

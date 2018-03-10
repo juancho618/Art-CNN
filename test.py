@@ -1,11 +1,7 @@
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import data as data
-#from model2 import Model
-from VGG11up import Model
-from skimage import io
-import skimage.external.tifffile as tiff
-import scipy.misc
+from noPooling import Model
+# from fcnVGGhourglass import Model
 from PIL import Image
 import utils as utils
 import numpy as np
@@ -14,38 +10,50 @@ FLAGS = tf.app.flags.FLAGS
 
 
 def evaluate():
+    model = Model()
     img_tf = tf.placeholder(tf.float32)
     with tf.Graph().as_default():
         images, labels = data.load_test_data()
-        model = Model()
-
-        logits = model.inference(images, keep_prob=1.0)
-        accuracy = model.accuracy(logits, labels)
-        img_tf = logits
+        x = tf.placeholder(shape=[None, data.IMAGE_SIZE, data.IMAGE_SIZE, 3], dtype=tf.float32, name='x') 
+        y = tf.placeholder(shape=[None, data.IMAGE_SIZE,  data.IMAGE_SIZE], dtype=tf.float32, name='y') 
+        
+        infered = model.inference(x, keep_prob=1.0, train=False)
+        # loss = model.loss(logits= infered, labels= y)
+        init = tf.global_variables_initializer()
+        #accuracy = model.accuracy(logits, y)
+        img_tf = infered
         saver = tf.train.Saver()
+        results = []
         with tf.Session() as sess:
-            tf.global_variables_initializer().run()
+            sess.run(init)
             saver.restore(sess, FLAGS.checkpoint_file_path)
 
-            total_accuracy = sess.run([accuracy])
-            print('Test Error: {}'.format(total_accuracy))
-            im =sess.run(img_tf)
-            result_images = []
+            # total_accuracy = sess.run([accuracy])
+            # print('Test Error: {}'.format(total_accuracy))
+            #For every image
             for i in range(len(images)):
-                npImage = np.array(im[i])
-                result_images.append(npImage)
-                # utils.save_img('./hourglass/results', npImage)
-                tiff.imshow(images[i])
-                tiff.imshow(labels[i],cmap='gray')
-                # print(npImage.shape)
-                # tiff.imshow(npImage)
-                # tiff.imsave('./hourglass/results/temp'+str(i)+'.tiff', tiff.imshow(im[33], cmap='gray'))
-                # # imag = Image.fromarray(im[i])
-                # # imag.save("your_file"+i+".tiff")
-                tiff.imshow(im[i], cmap='gray')
-                # #scipy.misc.imsave('./hourglass/results/temp'+str(i)+'.jpg', im[i])
-                io.show()
-            # np.save('./11up/results/file.npy', np.array(result_images))
+                offset = (i * FLAGS.batch_size) % (len(images) - FLAGS.batch_size)
+                batch_x, batch_y = images[offset:(offset + FLAGS.batch_size), :], labels[
+                                                                                  offset:(offset + FLAGS.batch_size), :]
+                infered_image  = sess.run(infered, feed_dict={x: batch_x})
+                results.append(infered_image)
+           
+            # result_images = []
+            # img = Image.fromarray(np.uint8(images[525]))
+            # img_r = Image.fromarray(np.uint8(im[525]))
+
+            # img.show()
+            # img_r.show()
+            # for i in range(len(images)):
+            #     npImage = np.array(im[i])
+            #     result_images.append(npImage)
+            #     # utils.save_img('./hourglass/results', npImage)
+            #     img = Image.fromarray(np.uint8(images[i]))
+            #     img_r = Image.fromarray(np.uint8(im[i]))
+    
+            #     img.show()
+            #     img_r.show()
+            np.save('./noPooling/results/results.npy', np.array(results))
     
 
 
@@ -54,7 +62,8 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    tf.app.flags.DEFINE_string('checkpoint_file_path', '11up/checkpoints/model.ckpt-75-75', 'path to checkpoint file')
+    tf.app.flags.DEFINE_integer('batch_size', 1, 'size of training batches')
+    tf.app.flags.DEFINE_string('checkpoint_file_path', 'noPooling/checkpoints/model.ckpt-75-102', 'path to checkpoint file')
     tf.app.flags.DEFINE_string('test_data', 'original_train/', 'path to test data')
 
     tf.app.run()
