@@ -2,7 +2,7 @@ import tensorflow as tf
 import data as data
 import time
 
-from noPooling import Model
+from noPoolingRefator import Model
 # from fcnVGGhourglass import Model
 
 
@@ -17,16 +17,17 @@ def train():
 
     with tf.Graph().as_default():
         # Load the images drom the .npy file       
-        images, val_images, labels, val_labels = data.load_train_data()
+        images, val_images, labels, val_labels, color_channel_mean = data.load_train_data()
         
         x = tf.placeholder(shape=[None, data.IMAGE_SIZE, data.IMAGE_SIZE, 3], dtype=tf.float32, name='x') 
-        y = tf.placeholder(shape=[None, data.IMAGE_SIZE,  data.IMAGE_SIZE,3], dtype=tf.float32, name='y') 
+        y = tf.placeholder(shape=[None, data.IMAGE_SIZE,  data.IMAGE_SIZE], dtype=tf.float32, name='y') 
         keep_prob = tf.placeholder(tf.float32, name='dropout_prob')
         global_step = tf.contrib.framework.get_or_create_global_step()
 
-        infered_images = model.inference(x, keep_prob=keep_prob, train=True) 
-        loss = model.loss(logits=infered_images, labels=y) # calculate loss pixel by pixel
-        accuracy =  model.accuracy(infered_images, y)
+        images, val_images, labels, val_labels, color_channel_mean = data.load_train_data()
+        infered_images = model.inference(x, keep_prob=keep_prob, train=True, avg_ch_array = color_channel_mean) 
+        loss = model.loss(inference=infered_images, labels=y) # calculate loss pixel by pixel
+        #accuracy =  model.accuracy(infered_images, y) # Not needed
         summary_op = tf.summary.merge_all()
         train_op = model.train(loss, global_step = global_step)
         
@@ -61,8 +62,8 @@ def main(argv=None):
 
 if __name__ == '__main__':
     tf.app.flags.DEFINE_integer('batch_size', 18, 'size of training batches')
-    tf.app.flags.DEFINE_integer('num_iter', 102, 'number of training iterations')
-    tf.app.flags.DEFINE_string('checkpoint_file_path', 'noPooling/checkpoints/model.ckpt-75', 'path to checkpoint file')
-    tf.app.flags.DEFINE_string('summary_dir', 'noPooling/graphs', 'path to directory for storing summaries')
+    tf.app.flags.DEFINE_integer('num_iter', 1201, 'number of training iterations')#102
+    tf.app.flags.DEFINE_string('checkpoint_file_path', 'robe_face/checkpoints/model.ckpt-1201', 'path to checkpoint file')
+    tf.app.flags.DEFINE_string('summary_dir', 'robe_face/graphs', 'path to directory for storing summaries')
 
     tf.app.run()

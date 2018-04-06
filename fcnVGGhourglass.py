@@ -8,6 +8,7 @@ VGG_MEAN = [103.939, 116.779, 123.68]
 #link about deconvolution terms: https://www.quora.com/What-is-the-difference-between-Deconvolution-Upsampling-Unpooling-and-Convolutional-Sparse-Coding
 #deconvolution video: https://www.youtube.com/watch?v=8DiqJj5tPlA
 #good guide for transpose deconvolution: http://cv-tricks.com/image-segmentation/transpose-convolution-in-tensorflow/
+#Color normalization: https://stats.stackexchange.com/questions/211436/why-do-we-normalize-images-by-subtracting-the-datasets-image-mean-and-not-the-c
 class Model(object):
     def __init__(self, batch_size=18, learning_rate=5e-4):
         self._batch_size = batch_size
@@ -15,21 +16,7 @@ class Model(object):
         # preloaded file 
         self.data_dict = np.load('vgg16.npy', encoding='latin1').item()
     
-    #to be deleted
-    #  def _create_weights(self, shape):
-    #     return tf.Variable(tf.truncated_normal(shape = shape, stddev = 0.1, dtype = tf.float32))
-
-    # def _create_bias(self, shape):
-    #     return tf.Variable(tf.constant(1., shape = shape, dtype = tf.float32))
     
-    # def _create_conv2d(self, x, W):
-    #     return tf.nn.conv2d(input=x,
-    #                         filter=W,
-    #                         strides = [1, 1, 1, 1],
-    #                         padding = 'SAME')
-    
-
-    #----
 
     def inference(self, images, keep_prob, train):
         random_init_fc8= False

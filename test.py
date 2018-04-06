@@ -1,6 +1,6 @@
 import tensorflow as tf
 import data as data
-from noPooling import Model
+from noPoolingRefator import Model
 # from fcnVGGhourglass import Model
 from PIL import Image
 import utils as utils
@@ -8,22 +8,25 @@ import numpy as np
 
 FLAGS = tf.app.flags.FLAGS
 
+avg_channel_color = [85.03, 40.26, 25.25]
 
 def evaluate():
     model = Model()
     img_tf = tf.placeholder(tf.float32)
     with tf.Graph().as_default():
         images, labels = data.load_test_data()
+        print('size', images.shape)
         x = tf.placeholder(shape=[None, data.IMAGE_SIZE, data.IMAGE_SIZE, 3], dtype=tf.float32, name='x') 
         y = tf.placeholder(shape=[None, data.IMAGE_SIZE,  data.IMAGE_SIZE], dtype=tf.float32, name='y') 
         
-        infered = model.inference(x, keep_prob=1.0, train=False)
-        # loss = model.loss(logits= infered, labels= y)
+        infered = model.inference(x, keep_prob=1.0, train=False, avg_ch_array=avg_channel_color)
+        loss = model.loss(inference= infered, labels= y)
         init = tf.global_variables_initializer()
         #accuracy = model.accuracy(logits, y)
         img_tf = infered
         saver = tf.train.Saver()
         results = []
+        loss_array =[]
         with tf.Session() as sess:
             sess.run(init)
             saver.restore(sess, FLAGS.checkpoint_file_path)
@@ -37,23 +40,11 @@ def evaluate():
                                                                                   offset:(offset + FLAGS.batch_size), :]
                 infered_image  = sess.run(infered, feed_dict={x: batch_x})
                 results.append(infered_image)
-           
-            # result_images = []
-            # img = Image.fromarray(np.uint8(images[525]))
-            # img_r = Image.fromarray(np.uint8(im[525]))
-
-            # img.show()
-            # img_r.show()
-            # for i in range(len(images)):
-            #     npImage = np.array(im[i])
-            #     result_images.append(npImage)
-            #     # utils.save_img('./hourglass/results', npImage)
-            #     img = Image.fromarray(np.uint8(images[i]))
-            #     img_r = Image.fromarray(np.uint8(im[i]))
-    
-            #     img.show()
-            #     img_r.show()
-            np.save('./noPooling/results/results.npy', np.array(results))
+                cur_loss = sess.run(loss, feed_dict={x: batch_x, y: batch_y})
+                print(i, np.round(cur_loss, decimals=1))
+                loss_array.append(cur_loss)
+            np.save('./robe_face/results/results_robe.npy', np.array(results))
+            np.save('./robe_face/results/loss_results_robe.npy', np.array(loss_array))
     
 
 
@@ -63,8 +54,8 @@ def main(argv=None):
 
 if __name__ == '__main__':
     tf.app.flags.DEFINE_integer('batch_size', 1, 'size of training batches')
-    tf.app.flags.DEFINE_string('checkpoint_file_path', 'noPooling/checkpoints/model.ckpt-75-102', 'path to checkpoint file')
-    tf.app.flags.DEFINE_string('test_data', 'original_train/', 'path to test data')
+    tf.app.flags.DEFINE_string('checkpoint_file_path', 'robe_face/checkpoints/model.ckpt-1201-1201', 'path to checkpoint file')
+    tf.app.flags.DEFINE_string('test_data', 'robe_face/', 'path to test data')
 
     tf.app.run()
 

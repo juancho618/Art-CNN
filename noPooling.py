@@ -36,9 +36,9 @@ class Model(object):
             self._activation_summary(conv3)
 
         with tf.variable_scope('conv4') as scope:
-            kernel = self._create_weights([2, 2, 64, 1])
+            kernel = self._create_weights([2, 2, 64, 3])
             conv = self._create_conv2d(conv3, kernel) 
-            bias = self._create_bias([1])
+            bias = self._create_bias([3])
             preactivation = tf.nn.bias_add(conv, bias)
             conv4 = tf.nn.relu(preactivation, name = scope.name)
             self._activation_summary(conv4)

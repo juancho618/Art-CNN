@@ -7,14 +7,14 @@ import matplotlib.pyplot as plt
 import scipy.misc
 
 
-data = np.load('./11up/results/file.npy')
+data = np.load('./hourglassDev18b/results/file.npy')
 
 print(data.shape)
 uInt = data[1].astype(int)
 # scipy.misc.imsave('outfile.jpg', uInt)
 # plt.imsave('test.png', data, cmap = plt.cm.gray)
 print(uInt, data[1])
-tiff.imshow(data[1], cmap='gray')
-io.show()
-io.imsave('test.tif',data[1])
+tiff.imshow(data[1]) #hourglassDev18b
+# io.show()
+# io.imsave('test.tif',data[1])
 
