@@ -8,3 +8,4 @@ vgg16.npy
 *.npy
 data
 node_modules
+*.jpg

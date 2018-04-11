@@ -2,6 +2,7 @@ from PIL import Image
 import numpy as np
 from scipy import misc
 import cv2
+import imgHist as histogram
 
 Image.MAX_IMAGE_PIXELS = None
 #TOOD: change numpy for pandas    
@@ -25,5 +26,6 @@ def convertImage(name):
                                 'data': np.array(im_array[(x*images_size):((x*images_size) + images_size),(y*images_size):((y*images_size) + images_size)])
                             })
     data_array = np.array(data_array)
-    np.save('IRR_crop_registered_128', data_array)#name
-convertImage('../data/IRR_crop_registered')
+    np.save('../data/00-17-VIS-HI-AT-robe1_128', data_array)#name
+    histogram.save_histogram('00-17-VIS-HI-AT-robe1', 'Robe Color Histogram', 'color') #to save color histogram
+convertImage('../data/00-17-VIS-HI-AT-robe1')
